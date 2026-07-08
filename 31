@@ -1,0 +1,28 @@
+#include <stdio.h>
+
+int fibonacci(int n);
+
+int main() {
+    int n;
+    char term;
+
+    // Считываем число и проверяем, что после него нет лишних символов
+    if (scanf("%d%c", &n, &term) != 2 || (term != '\n' && term != ' ') || n < 0) {
+        printf("n/a");
+    } else {
+        printf("%d", fibonacci(n));
+    }
+
+    return 0;
+}
+
+// Рекурсивная функция поиска n-го числа Фибоначчи
+int fibonacci(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    if (n == 1) {
+        return 1;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
