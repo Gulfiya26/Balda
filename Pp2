@@ -1,0 +1,208 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
+
+#define WIDTH 80
+#define HEIGHT 25
+#define WIN_SCORE 21
+
+#define LEFT_PADDLE_X 2
+#define RIGHT_PADDLE_X (WIDTH - 3)
+
+static struct termios old_termios;
+static int raw_mode_enabled = 0;
+
+void disable_raw_mode(void);
+void enable_raw_mode(void);
+void clear_screen(void);
+void draw_field(int left_paddle_y, int right_paddle_y, int ball_x, int ball_y,
+                int left_score, int right_score);
+int read_command(void);
+void move_paddles(int command, int *left_paddle_y, int *right_paddle_y);
+void reset_ball(int *ball_x, int *ball_y, int *ball_dx, int *ball_dy, int direction);
+void update_ball(int left_paddle_y, int right_paddle_y,
+                 int *ball_x, int *ball_y, int *ball_dx, int *ball_dy,
+                 int *left_score, int *right_score);
+
+int main(void) {
+    int left_paddle_y = HEIGHT / 2;
+    int right_paddle_y = HEIGHT / 2;
+    int ball_x = WIDTH / 2;
+    int ball_y = HEIGHT / 2;
+    int ball_dx = -1;
+    int ball_dy = 1;
+    int left_score = 0;
+    int right_score = 0;
+    int command;
+
+    enable_raw_mode();
+    draw_field(left_paddle_y, right_paddle_y, ball_x, ball_y, left_score, right_score);
+
+    while (left_score < WIN_SCORE && right_score < WIN_SCORE) {
+        command = read_command();
+
+        move_paddles(command, &left_paddle_y, &right_paddle_y);
+        update_ball(left_paddle_y, right_paddle_y,
+                    &ball_x, &ball_y, &ball_dx, &ball_dy,
+                    &left_score, &right_score);
+
+        draw_field(left_paddle_y, right_paddle_y, ball_x, ball_y, left_score, right_score);
+    }
+
+    disable_raw_mode();
+
+    if (left_score == WIN_SCORE) {
+        printf("Player 1 wins!\n");
+    } else if (right_score == WIN_SCORE) {
+        printf("Player 2 wins!\n");
+    }
+
+    return 0;
+}
+
+void disable_raw_mode(void) {
+    if (raw_mode_enabled) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
+        raw_mode_enabled = 0;
+    }
+}
+
+void enable_raw_mode(void) {
+    struct termios new_termios;
+
+    if (tcgetattr(STDIN_FILENO, &old_termios) == 0) {
+        new_termios = old_termios;
+        new_termios.c_lflag &= ~(ICANON | ECHO);
+        new_termios.c_cc[VMIN] = 1;
+        new_termios.c_cc[VTIME] = 0;
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
+        raw_mode_enabled = 1;
+        atexit(disable_raw_mode);
+    }
+}
+
+void clear_screen(void) {
+    printf("\033[2J\033[H");
+}
+
+void draw_field(int left_paddle_y, int right_paddle_y, int ball_x, int ball_y,
+                int left_score, int right_score) {
+    int x, y;
+    char ch;
+
+    clear_screen();
+    printf("Score: %d : %d\n", left_score, right_score);
+
+    for (y = 0; y < HEIGHT; y++) {
+        for (x = 0; x < WIDTH; x++) {
+            ch = ' ';
+
+            if (y == 0 || y == HEIGHT - 1) {
+                ch = '-';
+            } else if (x == 0 || x == WIDTH - 1) {
+                ch = '|';
+            }
+
+            if (x == ball_x && y == ball_y) {
+                ch = 'o';
+            }
+
+            if (x == LEFT_PADDLE_X &&
+                y >= left_paddle_y - 1 && y <= left_paddle_y + 1) {
+                ch = '|';
+            }
+
+            if (x == RIGHT_PADDLE_X &&
+                y >= right_paddle_y - 1 && y <= right_paddle_y + 1) {
+                ch = '|';
+            }
+
+            if (x == ball_x && y == ball_y) {
+                ch = 'o';
+            }
+
+            putchar(ch);
+        }
+        putchar('\n');
+    }
+
+    fflush(stdout);
+}
+
+int read_command(void) {
+    int c;
+
+    while ((c = getchar()) != EOF) {
+        if (c == 'a' || c == 'A' ||
+            c == 'z' || c == 'Z' ||
+            c == 'k' || c == 'K' ||
+            c == 'm' || c == 'M' ||
+            c == ' ') {
+            return c;
+        }
+    }
+
+    return ' ';
+}
+
+void move_paddles(int command, int *left_paddle_y, int *right_paddle_y) {
+    if ((command == 'a' || command == 'A') && *left_paddle_y > 2) {
+        (*left_paddle_y)--;
+    } else if ((command == 'z' || command == 'Z') && *left_paddle_y < HEIGHT - 3) {
+        (*left_paddle_y)++;
+    } else if ((command == 'k' || command == 'K') && *right_paddle_y > 2) {
+        (*right_paddle_y)--;
+    } else if ((command == 'm' || command == 'M') && *right_paddle_y < HEIGHT - 3) {
+        (*right_paddle_y)++;
+    }
+}
+
+void reset_ball(int *ball_x, int *ball_y, int *ball_dx, int *ball_dy, int direction) {
+    *ball_x = WIDTH / 2;
+    *ball_y = HEIGHT / 2;
+    *ball_dx = direction;
+    *ball_dy = 1;
+}
+
+void update_ball(int left_paddle_y, int right_paddle_y,
+                 int *ball_x, int *ball_y, int *ball_dx, int *ball_dy,
+                 int *left_score, int *right_score) {
+    int next_x = *ball_x + *ball_dx;
+    int next_y = *ball_y + *ball_dy;
+
+    if (next_y <= 0 || next_y >= HEIGHT - 1) {
+        *ball_dy = -(*ball_dy);
+        next_y = *ball_y;
+    }
+
+    if (*ball_dx < 0 &&
+        next_x == LEFT_PADDLE_X &&
+        next_y >= left_paddle_y - 1 &&
+        next_y <= left_paddle_y + 1) {
+        *ball_dx = -(*ball_dx);
+        next_x = *ball_x;
+    } else if (*ball_dx > 0 &&
+               next_x == RIGHT_PADDLE_X &&
+               next_y >= right_paddle_y - 1 &&
+               next_y <= right_paddle_y + 1) {
+        *ball_dx = -(*ball_dx);
+        next_x = *ball_x;
+    }
+
+    if (next_x <= 0) {
+        (*right_score)++;
+        reset_ball(ball_x, ball_y, ball_dx, ball_dy, -1);
+        return;
+    }
+
+    if (next_x >= WIDTH - 1) {
+        (*left_score)++;
+        reset_ball(ball_x, ball_y, ball_dx, ball_dy, 1);
+        return;
+    }
+
+    *ball_x = next_x;
+    *ball_y = next_y;
+}
