@@ -1,0 +1,157 @@
+#include <stdio.h>
+
+void trim_newline(char *str);
+int str_len(const char *str);
+int hex_to_int(char c);
+int validate_encode_input(const char *str);
+int validate_decode_input(const char *str);
+void encode_char(char c);
+void decode_char(char h1, char h2);
+
+int main(void) {
+    char mode_line[16];
+    char input[4096];
+    int mode = -1;
+
+    if (fgets(mode_line, sizeof(mode_line), stdin) == NULL) {
+        printf("n/a\n");
+        return 0;
+    }
+
+    trim_newline(mode_line);
+
+    if (mode_line[0] == '0' && mode_line[1] == '\0') {
+        mode = 0;
+    } else if (mode_line[0] == '1' && mode_line[1] == '\0') {
+        mode = 1;
+    } else {
+        printf("n/a\n");
+        return 0;
+    }
+
+    if (fgets(input, sizeof(input), stdin) == NULL) {
+        printf("n/a\n");
+        return 0;
+    }
+
+    trim_newline(input);
+
+    if (mode == 0) {
+        if (!validate_encode_input(input)) {
+            printf("n/a\n");
+            return 0;
+        }
+
+        for (int i = 0; input[i] != '\0'; i += 2) {
+            encode_char(input[i]);
+            if (input[i + 2] != '\0') {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    } else {
+        if (!validate_decode_input(input)) {
+            printf("n/a\n");
+            return 0;
+        }
+
+        for (int i = 0; input[i] != '\0'; i += 3) {
+            decode_char(input[i], input[i + 1]);
+            if (input[i + 3] != '\0') {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+
+int str_len(const char *str) {
+    int len = 0;
+    while (str[len] != '\0') {
+        len++;
+    }
+    return len;
+}
+
+void trim_newline(char *str) {
+    int i = 0;
+    while (str[i] != '\0') {
+        if (str[i] == '\n' || str[i] == '\r') {
+            str[i] = '\0';
+            break;
+        }
+        i++;
+    }
+}
+
+int hex_to_int(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    return -1;
+}
+
+int validate_encode_input(const char *str) {
+    int len = str_len(str);
+
+    if (len == 0 || len % 2 == 0) {
+        return 0;
+    }
+
+    for (int i = 0; i < len; i++) {
+        if (i % 2 == 0) {
+            if (str[i] == ' ') {
+                return 0;
+            }
+        } else {
+            if (str[i] != ' ') {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+int validate_decode_input(const char *str) {
+    int len = str_len(str);
+
+    if (len == 0 || (len + 1) % 3 != 0) {
+        return 0;
+    }
+
+    for (int i = 0; i < len; i++) {
+        if ((i + 1) % 3 == 0) {
+            if (str[i] != ' ') {
+                return 0;
+            }
+        } else {
+            if (hex_to_int(str[i]) == -1) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+void encode_char(char c) {
+    char hex[] = "0123456789ABCDEF";
+    unsigned char value = (unsigned char)c;
+    printf("%c%c", hex[value / 16], hex[value % 16]);
+}
+
+void decode_char(char h1, char h2) {
+    int high = hex_to_int(h1);
+    int low = hex_to_int(h2);
+    char result = (char)(high * 16 + low);
+    printf("%c", result);
+}
