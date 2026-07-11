@@ -1,0 +1,112 @@
+#include <stdio.h>
+
+#define fiels_height 25
+#define fiels_width 80
+
+void draw_field(int player1_pos, int player2_pos, int ball_pos_x, int ball_pos_y) {
+    for (int y = 0; y < fiels_height; y++) {
+        for (int x = 0; x < fiels_width; x++) {
+            if (x == 0 || x == fiels_width - 1) {
+                printf("#");
+            } else if (y == 0 || y == fiels_height - 1) {
+                printf("#");
+            } else if (x == ball_pos_x && y == ball_pos_y) {
+                printf("*");
+            } else if (x == fiels_width / 2) {
+                printf("|");
+            } else if ((y == player1_pos || y == player1_pos - 1 || y == player1_pos + 1) && x == 1) {
+                printf("@");
+            } else if ((y == player2_pos || y == player2_pos - 1 || y == player2_pos + 1) &&
+                       x == fiels_width - 2) {
+                printf("@");
+            } else {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    char ch;
+    int player1_pos = 13;
+    int player2_pos = 15;
+    int ball_pos_x = 39;
+    int ball_pos_y = 12;
+    int vector_x = 1;
+    int vector_y = 1;
+    int score1 = 0;
+    int score2 = 0;
+    while (score1 < 21 && score2 < 21) {
+        draw_field(player1_pos, player2_pos, ball_pos_x, ball_pos_y);
+        printf("%d - %d\n", score1, score2);
+        scanf("%c\n", &ch);
+        switch (ch) {
+            case 'a':
+            case 'A':
+                if (player1_pos > 2) player1_pos--;
+                break;
+            case 'z':
+            case 'Z':
+                if (player1_pos < fiels_height - 3) player1_pos++;
+                break;
+            case 'k':
+            case 'K':
+                if (player2_pos > 2) player2_pos--;
+                break;
+            case 'm':
+            case 'M':
+                if (player2_pos < fiels_height - 3) player2_pos++;
+                break;
+            case ' ':
+            default:
+                break;
+        }
+
+        int next_x = ball_pos_x + vector_x;
+        int next_y = ball_pos_y + vector_y;
+
+        if (next_y <= 0 || next_y >= fiels_height - 1) {
+            vector_y = -vector_y;
+            next_y = ball_pos_y + vector_y;
+        }
+
+        if (next_x == 1 && next_y >= player1_pos - 1 && next_y <= player1_pos + 1) {
+            vector_x = -vector_x;
+            next_x = ball_pos_x + vector_x;
+        }
+
+        else if (next_x == fiels_width - 2 && next_y >= player2_pos - 1 && next_y <= player2_pos + 1) {
+            vector_x = -vector_x;
+            next_x = ball_pos_x + vector_x;
+        }
+
+        else if (next_x <= 0) {
+            score2++;
+
+            ball_pos_x = fiels_width / 2;
+            ball_pos_y = fiels_height / 2;
+            vector_x = 1;
+            vector_y = 1;
+            continue;
+        }
+
+        else if (next_x >= fiels_width - 1) {
+            score1++;
+            ball_pos_x = fiels_width / 2;
+            ball_pos_y = fiels_height / 2;
+            vector_x = -1;
+            vector_y = 1;
+            continue;
+        }
+
+        ball_pos_x = next_x;
+        ball_pos_y = next_y;
+    }
+    if (score1 == 21) {
+        printf("Player 1 wins!");
+    } else {
+        printf("Player 2 wins!");
+    }
+    return 0;
+}
